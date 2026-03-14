@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt Optimizer</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080808;
+    --bg2: #0e0e0e;
+    --bg3: #131313;
+    --border: #1c1c1c;
+    --border2: #242424;
+    --text: #e4ddd0;
+    --text2: #8a8278;
+    --text3: #444;
+    --gold: #c9a96e;
+    --gold2: #a8883d;
+    --green: #4a7c59;
+    --red: #7c4a4a;
+  }
+
+- { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+background: var(–bg);
+color: var(–text);
+font-family: ‘Playfair Display’, Georgia, serif;
+min-height: 100vh;
+overflow-x: hidden;
+}
+
+/* Grain overlay */
+body::before {
+content: ‘’;
+position: fixed;
+inset: 0;
+background-image: url(“data:image/svg+xml,%3Csvg viewBox=‘0 0 256 256’ xmlns=‘http://www.w3.org/2000/svg’%3E%3Cfilter id=‘noise’%3E%3CfeTurbulence type=‘fractalNoise’ baseFrequency=‘0.9’ numOctaves=‘4’ stitchTiles=‘stitch’/%3E%3C/filter%3E%3Crect width=‘100%25’ height=‘100%25’ filter=‘url(%23noise)’ opacity=‘0.04’/%3E%3C/svg%3E”);
+pointer-events: none;
+z-index: 0;
+opacity: 0.4;
+}
+
+.wrap { position: relative; z-index: 1; max-width: 1200px; margin: 0 auto; }
+
+/* Header */
+header {
+border-bottom: 1px solid var(–border);
+padding: 28px 48px;
+display: flex;
+justify-content: space-between;
+align-items: flex-end;
+animation: fadeDown 0.6s ease both;
+}
+
+.header-left .eyebrow {
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 9px;
+letter-spacing: 5px;
+color: var(–text3);
+text-transform: uppercase;
+margin-bottom: 6px;
+}
+
+.header-left h1 {
+font-size: 26px;
+font-weight: 400;
+letter-spacing: -0.3px;
+color: #f0ebe0;
+}
+
+.header-right {
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 10px;
+color: var(–text3);
+text-align: right;
+line-height: 1.8;
+}
+
+.header-right span { color: var(–gold); }
+
+/* API Key bar */
+.apibar {
+background: var(–bg2);
+border-bottom: 1px solid var(–border);
+padding: 14px 48px;
+display: flex;
+align-items: center;
+gap: 16px;
+animation: fadeDown 0.6s 0.1s ease both;
+}
+
+.apibar label {
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 10px;
+letter-spacing: 3px;
+color: var(–text3);
+text-transform: uppercase;
+white-space: nowrap;
+}
+
+.apibar input {
+flex: 1;
+background: var(–bg3);
+border: 1px solid var(–border2);
+color: var(–text2);
+padding: 8px 14px;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 12px;
+outline: none;
+transition: border-color 0.2s;
+}
+
+.apibar input:focus { border-color: var(–gold2); }
+
+.apibar .hint {
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 9px;
+color: var(–text3);
+white-space: nowrap;
+}
+
+.apibar .hint a { color: var(–gold2); text-decoration: none; }
+.apibar .hint a:hover { color: var(–gold); }
+
+/* Main layout */
+main {
+display: grid;
+grid-template-columns: 1fr 1fr;
+min-height: calc(100vh - 130px);
+}
+
+/* Panels */
+.panel-left {
+border-right: 1px solid var(–border);
+padding: 36px 48px;
+display: flex;
+flex-direction: column;
+gap: 28px;
+animation: fadeUp 0.6s 0.2s ease both;
+}
+
+.panel-right {
+padding: 36px 48px;
+display: flex;
+flex-direction: column;
+gap: 24px;
+animation: fadeUp 0.6s 0.3s ease both;
+}
+
+/* Field label */
+.field-label {
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 9px;
+letter-spacing: 4px;
+color: var(–text3);
+text-transform: uppercase;
+margin-bottom: 10px;
+}
+
+/* Model toggle */
+.model-toggle { display: flex; gap: 8px; }
+
+.model-btn {
+flex: 1;
+padding: 9px 0;
+background: transparent;
+color: var(–text3);
+border: 1px solid var(–border2);
+cursor: pointer;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 10px;
+letter-spacing: 3px;
+text-transform: uppercase;
+transition: all 0.2s;
+}
+
+.model-btn:hover { border-color: var(–border2); color: var(–text2); }
+.model-btn.active { background: var(–gold); color: #000; border-color: var(–gold); font-weight: 600; }
+
+/* Goal chips */
+.goal-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.goal-chip {
+padding: 6px 16px;
+background: transparent;
+color: var(–text3);
+border: 1px solid var(–border);
+cursor: pointer;
+font-family: ‘Playfair Display’, serif;
+font-size: 12px;
+font-style: italic;
+transition: all 0.2s;
+}
+
+.goal-chip:hover { color: var(–text2); border-color: var(–border2); }
+.goal-chip.active { color: var(–gold); border-color: var(–gold2); background: rgba(201,169,110,0.05); }
+
+/* Textarea */
+.prompt-input {
+width: 100%;
+min-height: 260px;
+background: var(–bg2);
+border: 1px solid var(–border);
+color: var(–text);
+padding: 18px;
+font-family: ‘Playfair Display’, serif;
+font-size: 14px;
+line-height: 1.8;
+resize: vertical;
+outline: none;
+transition: border-color 0.2s;
+}
+
+.prompt-input:focus { border-color: var(–border2); }
+.prompt-input::placeholder { color: var(–text3); font-style: italic; }
+
+/* Footer bar input */
+.input-footer {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-top: 10px;
+}
+
+.char-count {
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 9px;
+color: var(–text3);
+}
+
+/* Optimize button */
+.btn-optimize {
+padding: 12px 36px;
+background: var(–gold);
+color: #000;
+border: none;
+cursor: pointer;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 10px;
+letter-spacing: 4px;
+font-weight: 600;
+text-transform: uppercase;
+transition: all 0.2s;
+position: relative;
+overflow: hidden;
+}
+
+.btn-optimize:hover { background: #d4b57a; }
+.btn-optimize:disabled { background: var(–bg3); color: var(–text3); cursor: not-allowed; }
+
+/* Right panel states */
+.empty-state {
+flex: 1;
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: center;
+color: var(–border2);
+text-align: center;
+gap: 14px;
+}
+
+.empty-glyph { font-size: 56px; opacity: 0.5; }
+
+.empty-label {
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 10px;
+letter-spacing: 4px;
+text-transform: uppercase;
+color: var(–text3);
+}
+
+/* Spinner */
+.spinner-wrap {
+flex: 1;
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: center;
+gap: 20px;
+}
+
+.spinner {
+width: 36px;
+height: 36px;
+border: 1px solid var(–border2);
+border-top-color: var(–gold);
+border-radius: 50%;
+animation: spin 0.9s linear infinite;
+}
+
+.spinner-label {
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 9px;
+letter-spacing: 5px;
+color: var(–text3);
+text-transform: uppercase;
+}
+
+/* Result sections */
+.result-section { display: flex; flex-direction: column; gap: 0; }
+
+.section-header {
+display: flex;
+justify-content: space-between;
+align-items: center;
+margin-bottom: 12px;
+}
+
+.divider {
+height: 1px;
+background: var(–border);
+margin: 20px 0;
+}
+
+/* Weak points */
+.weak-item {
+display: flex;
+gap: 12px;
+margin-bottom: 10px;
+align-items: flex-start;
+}
+
+.weak-arrow {
+color: var(–gold);
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 11px;
+margin-top: 2px;
+flex-shrink: 0;
+}
+
+.weak-text {
+font-size: 13px;
+color: var(–text2);
+line-height: 1.7;
+font-style: italic;
+}
+
+/* Optimized output */
+.output-box {
+background: var(–bg2);
+border: 1px solid var(–border);
+border-left: 2px solid var(–gold2);
+padding: 20px;
+font-family: ‘Playfair Display’, serif;
+font-size: 14px;
+line-height: 1.9;
+color: #e8e3d8;
+white-space: pre-wrap;
+word-break: break-word;
+max-height: 260px;
+overflow-y: auto;
+}
+
+.output-box::-webkit-scrollbar { width: 4px; }
+.output-box::-webkit-scrollbar-track { background: var(–bg); }
+.output-box::-webkit-scrollbar-thumb { background: var(–border2); }
+
+/* Change items */
+.change-item {
+display: flex;
+gap: 12px;
+margin-bottom: 10px;
+align-items: flex-start;
+}
+
+.change-plus {
+color: var(–green);
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 12px;
+margin-top: 2px;
+flex-shrink: 0;
+font-weight: 600;
+}
+
+.change-text {
+font-size: 13px;
+color: #7a9a7a;
+line-height: 1.7;
+}
+
+/* Copy button */
+.btn-copy {
+background: transparent;
+border: 1px solid var(–border2);
+color: var(–text3);
+padding: 5px 14px;
+cursor: pointer;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 9px;
+letter-spacing: 3px;
+text-transform: uppercase;
+transition: all 0.2s;
+}
+
+.btn-copy:hover { border-color: var(–gold2); color: var(–gold); }
+.btn-copy.copied { color: var(–gold); border-color: var(–gold2); }
+
+/* Error */
+.error-box {
+background: #120808;
+border: 1px solid #3a1515;
+padding: 16px 20px;
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 11px;
+color: #c46060;
+line-height: 1.6;
+}
+
+/* Model badge */
+.model-badge {
+font-family: ‘JetBrains Mono’, monospace;
+font-size: 9px;
+letter-spacing: 2px;
+color: var(–gold2);
+text-transform: uppercase;
+}
+
+/* Animations */
+@keyframes fadeDown {
+from { opacity: 0; transform: translateY(-10px); }
+to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeUp {
+from { opacity: 0; transform: translateY(12px); }
+to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+from { opacity: 0; transform: translateY(8px); }
+to { opacity: 1; transform: translateY(0); }
+}
+
+.result-anim { animation: fadeIn 0.4s ease both; }
+
+/* Responsive */
+@media (max-width: 860px) {
+header, .apibar, .panel-left, .panel-right { padding-left: 24px; padding-right: 24px; }
+main { grid-template-columns: 1fr; }
+.panel-left { border-right: none; border-bottom: 1px solid var(–border); }
+}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="header-left">
+      <div class="eyebrow">Ferramenta</div>
+      <h1>Prompt Optimizer</h1>
+    </div>
+    <div class="header-right">
+      Claude · ChatGPT<br>
+      <span>v1.0</span>
+    </div>
+  </header>
+
+  <div class="apibar">
+    <label>API Key</label>
+    <input type="password" id="apiKey" placeholder="sk-ant-api03-..." autocomplete="off" />
+    <div class="hint">Obtém em <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a> · não é guardada</div>
+  </div>
+
+  <main>
+    <!-- LEFT PANEL -->
+    <div class="panel-left">
+      <div>
+        <div class="field-label">Modelo alvo</div>
+        <div class="model-toggle">
+          <button class="model-btn active" data-model="Claude" onclick="selectModel(this)">Claude</button>
+          <button class="model-btn" data-model="ChatGPT" onclick="selectModel(this)">ChatGPT</button>
+        </div>
+      </div>
+
+```
+  <div>
+    <div class="field-label">Objectivo</div>
+    <div class="goal-chips">
+      <button class="goal-chip active" data-goal="Clareza" onclick="selectGoal(this)">Clareza</button>
+      <button class="goal-chip" data-goal="Criatividade" onclick="selectGoal(this)">Criatividade</button>
+      <button class="goal-chip" data-goal="Precisão técnica" onclick="selectGoal(this)">Precisão técnica</button>
+      <button class="goal-chip" data-goal="Concisão" onclick="selectGoal(this)">Concisão</button>
+      <button class="goal-chip" data-goal="Raciocínio passo a passo" onclick="selectGoal(this)">Passo a passo</button>
+    </div>
+  </div>
+
+  <div style="flex:1; display:flex; flex-direction:column;">
+    <div class="field-label">Prompt original</div>
+    <textarea
+      class="prompt-input"
+      id="promptInput"
+      placeholder="Cola aqui o teu prompt..."
+      oninput="updateChar()"
+      style="flex:1;"
+    ></textarea>
+    <div class="input-footer">
+      <span class="char-count" id="charCount">0 caracteres</span>
+      <button class="btn-optimize" id="btnOptimize" onclick="optimize()" disabled>
+        Optimizar →
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="panel-right" id="rightPanel">
+  <div class="empty-state" id="emptyState">
+    <div class="empty-glyph">◈</div>
+    <div class="empty-label">O resultado aparece aqui</div>
+  </div>
+</div>
+```
+
+  </main>
+</div>
+
+<script>
+  let currentModel = 'Claude';
+  let currentGoal = 'Clareza';
+
+  function selectModel(btn) {
+    document.querySelectorAll('.model-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentModel = btn.dataset.model;
+  }
+
+  function selectGoal(btn) {
+    document.querySelectorAll('.goal-chip').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentGoal = btn.dataset.goal;
+  }
+
+  function updateChar() {
+    const val = document.getElementById('promptInput').value;
+    document.getElementById('charCount').textContent = val.length + ' caracteres';
+    document.getElementById('btnOptimize').disabled = val.trim().length === 0;
+  }
+
+  function buildSystemPrompt(model, goal) {
+    const modelTips = model === 'Claude'
+      ? `- Claude responde bem a instruções explícitas de papel/persona
+- Beneficia de contexto estruturado com XML tags (<context>, <task>, <format>)
+- Evita linguagem vaga; sê prescritivo no formato de saída esperado
+- Segue melhor instruções quando o objectivo final está claro desde o início
+- Responde muito bem a pedidos de raciocínio explícito (think step by step)`
+      : `- ChatGPT responde bem a prompts com role explícito ("Act as...")
+- Prefere estrutura em bullets ou numeração para instruções complexas
+- Beneficia muito de exemplos concretos (few-shot prompting)
+- Especifica sempre o tom, audiência e formato de saída
+- Aceita bem system prompts separados do user message`;
+
+    return `És um especialista sénior em engenharia de prompts para modelos de linguagem.
+O utilizador vai fornecer um prompt em qualquer língua. A tua tarefa é:
+
+1. Identificar os pontos fracos do prompt original (máx 3, directos e sem suavizar)
+2. Devolver uma versão optimizada para ${model} com foco em: ${goal}
+3. Explicar as alterações principais (máx 3 pontos)
+
+Regras específicas para ${model}:
+${modelTips}
+
+Responde APENAS em JSON válido com esta estrutura exacta:
+{
+  "pontos_fracos": ["ponto 1", "ponto 2", "ponto 3"],
+  "prompt_optimizado": "o prompt melhorado aqui",
+  "alteracoes": ["alteração 1", "alteração 2", "alteração 3"]
+}
+Não incluas markdown, backticks nem texto fora do JSON.`;
+  }
+
+  async function optimize() {
+    const apiKey = document.getElementById('apiKey').value.trim();
+    const prompt = document.getElementById('promptInput').value.trim();
+
+    if (!apiKey) {
+      showError('Insere a tua API Key da Anthropic para continuar.');
+      return;
+    }
+    if (!prompt) return;
+
+    showSpinner();
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: buildSystemPrompt(currentModel, currentGoal),
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error?.message || 'Erro ' + res.status);
+      }
+
+      const data = await res.json();
+      const text = data.content?.find(b => b.type === 'text')?.text || '';
+      const clean = text.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(clean);
+      showResult(parsed);
+    } catch (e) {
+      showError('Erro: ' + e.message);
+    }
+  }
+
+  function showSpinner() {
+    document.getElementById('rightPanel').innerHTML = `
+      <div class="spinner-wrap">
+        <div class="spinner"></div>
+        <div class="spinner-label">A processar</div>
+      </div>`;
+  }
+
+  function showError(msg) {
+    document.getElementById('rightPanel').innerHTML = `
+      <div class="error-box result-anim">${msg}</div>`;
+  }
+
+  function showResult(data) {
+    const weakItems = (data.pontos_fracos || []).map(p => `
+      <div class="weak-item">
+        <span class="weak-arrow">↳</span>
+        <span class="weak-text">${escHtml(p)}</span>
+      </div>`).join('');
+
+    const changeItems = (data.alteracoes || []).map(a => `
+      <div class="change-item">
+        <span class="change-plus">+</span>
+        <span class="change-text">${escHtml(a)}</span>
+      </div>`).join('');
+
+    document.getElementById('rightPanel').innerHTML = `
+      <div class="result-anim" style="display:flex;flex-direction:column;gap:0;">
+
+        <div class="result-section">
+          <div class="field-label">Pontos Fracos</div>
+          ${weakItems}
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="result-section">
+          <div class="section-header">
+            <div class="field-label" style="margin-bottom:0;">Prompt Optimizado</div>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span class="model-badge">${escHtml(currentModel)}</span>
+              <button class="btn-copy" id="btnCopy" onclick="copyResult()">Copiar</button>
+            </div>
+          </div>
+          <div class="output-box" id="optimizedOutput">${escHtml(data.prompt_optimizado || '')}</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="result-section">
+          <div class="field-label">O que mudou</div>
+          ${changeItems}
+        </div>
+
+      </div>`;
+  }
+
+  function copyResult() {
+    const txt = document.getElementById('optimizedOutput')?.innerText;
+    if (!txt) return;
+    navigator.clipboard.writeText(txt).then(() => {
+      const btn = document.getElementById('btnCopy');
+      btn.textContent = '✓ Copiado';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = 'Copiar';
+        btn.classList.remove('copied');
+      }, 2000);
+    });
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // Enable button on typing
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('promptInput').addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') optimize();
+    });
+  });
+</script>
+
+</body>
+</html>
